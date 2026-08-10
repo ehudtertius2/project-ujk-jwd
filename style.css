@@ -8,22 +8,24 @@ body {
 .navbar-brand {
     font-size: 1.4rem;
 }
+.navbar-nav .nav-link {
+    font-weight: 500;
+}
 
-/* ===== CARD PRODUCT ===== */
+/* ===== CARD ===== */
 .card {
     border-radius: 12px;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
     border: none;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
-
 .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
-.card-img-top {
-    border-bottom: 3px solid #0d6efd;
+/* ===== SECTION ===== */
+section {
+    scroll-margin-top: 100px;
 }
 
 /* ===== BADGE ===== */
@@ -38,22 +40,10 @@ body {
     font-weight: 500;
 }
 
-.btn-sm {
-    padding: 4px 10px;
-}
-
-/* ===== FOOTER ===== */
-footer {
-    margin-top: 50px;
-}
-
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-    .col-md-4 {
-        margin-bottom: 20px;
-    }
-    
-    .display-4 {
-        font-size: 2rem;
+    .display-3 {
+        font-size: 2.2rem;
     }
 }
+

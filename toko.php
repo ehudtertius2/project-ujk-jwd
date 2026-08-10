@@ -1,18 +1,27 @@
 <?php
+session_start();
 include 'config/database.php';
 
+// Cek login - jika belum login, redirect ke login.php
+if (!isset($_SESSION['login'])) {
+    header('Location: login.php');
+    exit();
+}
+
+// Cek role user
+$isAdmin = ($_SESSION['role'] === 'admin');
+
 // ============================================
-// PROSES CRUD
+// PROSES CRUD (HANYA UNTUK ADMIN)
 // ============================================
 
-// CREATE - Tambah produk
-if (isset($_POST['tambah'])) {
+// CREATE - Tambah produk (Admin only)
+if (isset($_POST['tambah']) && $isAdmin) {
     $nama = mysqli_real_escape_string($conn, $_POST['nama']);
     $harga = (int)$_POST['harga'];
     $kategori = mysqli_real_escape_string($conn, $_POST['kategori']);
     $deskripsi = mysqli_real_escape_string($conn, $_POST['deskripsi']);
     
-    $gambar_default = 'default.png';
     $sql = "INSERT INTO produk (nama, harga, kategori, deskripsi) 
             VALUES ('$nama', $harga, '$kategori', '$deskripsi')";
     
@@ -23,8 +32,8 @@ if (isset($_POST['tambah'])) {
     }
 }
 
-// UPDATE - Edit produk
-if (isset($_POST['update'])) {
+// UPDATE - Edit produk (Admin only)
+if (isset($_POST['update']) && $isAdmin) {
     $id = (int)$_POST['id'];
     $nama = mysqli_real_escape_string($conn, $_POST['nama']);
     $harga = (int)$_POST['harga'];
@@ -45,8 +54,8 @@ if (isset($_POST['update'])) {
     }
 }
 
-// DELETE - Hapus produk
-if (isset($_GET['hapus'])) {
+// DELETE - Hapus produk (Admin only)
+if (isset($_GET['hapus']) && $isAdmin) {
     $id = (int)$_GET['hapus'];
     $sql = "DELETE FROM produk WHERE id=$id";
     
@@ -67,7 +76,7 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Toko Rajut - Produk Karya Tangan</title>
-    
+    <link rel="icon" type="image/png" href="images/pngwing.com.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -86,6 +95,9 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
                 <a class="nav-link active" href="toko.php">
                     <i class="fas fa-store me-1"></i>Toko Rajut
                 </a>
+                <a class="nav-link text-warning" href="logout.php">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </a>
             </div>
         </div>
     </nav>
@@ -95,6 +107,19 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
         <div class="text-center mb-4">
             <h2><i class="fas fa-tshirt text-primary me-2"></i>Produk Rajut Kami</h2>
             <p class="text-muted">Karya tangan berkualitas dari pengrajin lokal</p>
+            
+            <!-- Info User -->
+            <div class="d-inline-block bg-light px-3 py-2 rounded">
+                <?php if ($isAdmin): ?>
+                    <span class="badge bg-warning text-dark ms-1">
+                        <i class="fas fa-cogs me-1"></i>Full Akses
+                    </span>
+                <?php else: ?>
+                    <span class="badge bg-secondary ms-1">
+                        <i class="fas fa-eye me-1"></i>Hanya Lihat
+                    </span>
+                <?php endif; ?>
+            </div>
         </div>
 
         <!-- ===== NOTIFIKASI ===== -->
@@ -112,7 +137,8 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
             </div>
         <?php endif; ?>
 
-        <!-- ===== FORM TAMBAH PRODUK (CREATE) ===== -->
+        <!-- ===== FORM TAMBAH PRODUK (CREATE) - HANYA ADMIN ===== -->
+        <?php if ($isAdmin): ?>
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-primary text-white">
                 <i class="fas fa-plus-circle me-2"></i>Tambah Produk Baru
@@ -139,6 +165,16 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
                 </form>
             </div>
         </div>
+        <?php else: ?>
+        <!-- Pesan untuk user biasa -->
+        <div class="alert alert-info text-center mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            Anda login sebagai <strong>Pengunjung</strong>. Anda hanya bisa melihat produk.
+            <?php if (!isset($_SESSION['login'])): ?>
+                <a href="login.php" class="alert-link">Login sebagai admin</a> untuk mengelola produk.
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
 
         <!-- ===== DAFTAR PRODUK (READ) ===== -->
         <div class="row">
@@ -156,20 +192,24 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
                             <p class="mt-2 small text-muted"><?= htmlspecialchars($row['deskripsi']) ?></p>
                             
                             <div class="mt-3">
-                                <!-- Tombol Detail (JavaScript) -->
+                                <!-- Tombol Detail (Semua user bisa lihat) -->
                                 <button class="btn btn-info btn-sm" onclick="detailProduk('<?= htmlspecialchars($row['nama']) ?>', '<?= number_format($row['harga'], 0, ',', '.') ?>', '<?= htmlspecialchars($row['kategori']) ?>', '<?= htmlspecialchars($row['deskripsi']) ?>')">
                                     <i class="fas fa-eye me-1"></i>Detail
                                 </button>
                                 
-                                <!-- Tombol Edit (Modal) -->
+                                <!-- Tombol Edit & Hapus - HANYA ADMIN -->
+                                <?php if ($isAdmin): ?>
                                 <button class="btn btn-warning btn-sm" onclick="editProduk(<?= $row['id'] ?>, '<?= addslashes($row['nama']) ?>', <?= $row['harga'] ?>, '<?= addslashes($row['kategori']) ?>', '<?= addslashes($row['deskripsi']) ?>')">
                                     <i class="fas fa-edit me-1"></i>Edit
                                 </button>
-                                
-                                <!-- Tombol Hapus -->
                                 <a href="?hapus=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus produk ini?')">
                                     <i class="fas fa-trash me-1"></i>Hapus
                                 </a>
+                                <?php else: ?>
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-lock me-1"></i>Login admin untuk edit
+                                </span>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -187,10 +227,17 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
         <!-- ===== INFO JUMLAH PRODUK ===== -->
         <div class="text-center text-muted mt-3">
             <small>Total produk: <?= $result->num_rows ?></small>
+            <?php if (!$isAdmin): ?>
+                <span class="ms-3">
+                    <i class="fas fa-lock me-1"></i>
+                    <small>Login sebagai admin untuk mengelola produk</small>
+                </span>
+            <?php endif; ?>
         </div>
     </div>
 
-    <!-- ===== MODAL EDIT (UPDATE) ===== -->
+    <!-- ===== MODAL EDIT (UPDATE) - HANYA ADMIN ===== -->
+    <?php if ($isAdmin): ?>
     <div class="modal fade" id="editModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -229,8 +276,9 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
-    <!-- ===== MODAL DETAIL (JavaScript) ===== -->
+    <!-- ===== MODAL DETAIL (Semua user bisa lihat) ===== -->
     <div class="modal fade" id="detailModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -254,7 +302,7 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
     <!-- ===== FOOTER ===== -->
     <footer class="bg-dark text-white text-center py-3 mt-5">
         <div class="container">
-            <p class="mb-0">&copy; 2024 - Nama Kamu | Toko Rajut</p>
+            <p class="mb-0">&copy; 2024 - Ehud Tertius Simanjuntak | Toko Rajut</p>
         </div>
     </footer>
 
@@ -262,4 +310,4 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
 </body>
-</php>
+</html>
