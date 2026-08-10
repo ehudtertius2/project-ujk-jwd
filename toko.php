@@ -11,6 +11,16 @@ if (!isset($_SESSION['login'])) {
 // Cek role user
 $isAdmin = ($_SESSION['role'] === 'admin');
 
+$kategori_list = [
+    'Aksesoris' => ' Aksecoris',
+    'Pakaian' => ' Pakaian',
+    'Dekorasi' => ' Dekorasi',
+    'Mainan' => ' Mainan',
+    'Tas & Dompet' => ' Tas & Dompet',
+    'Perlengkapan Bayi' => ' Perlengkapan Bayi',
+    'Lainnya' => ' Lainnya'
+];
+
 // ============================================
 // PROSES CRUD (HANYA UNTUK ADMIN)
 // ============================================
@@ -22,15 +32,58 @@ if (isset($_POST['tambah']) && $isAdmin) {
     $kategori = mysqli_real_escape_string($conn, $_POST['kategori']);
     $deskripsi = mysqli_real_escape_string($conn, $_POST['deskripsi']);
     
-    $sql = "INSERT INTO produk (nama, harga, kategori, deskripsi) 
-            VALUES ('$nama', $harga, '$kategori', '$deskripsi')";
+    $gambar = 'default.png'; // default jika tidak upload
     
-    if ($conn->query($sql)) {
-        $success = "Produk berhasil ditambahkan!";
-    } else {
-        $error = "Gagal menambahkan produk: " . $conn->error;
+    if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] === 0) {
+        $target_dir = "images/";
+        
+        // Buat folder images jika belum ada
+        if (!is_dir($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        
+        // Generate nama file unik
+        $file_extension = pathinfo($_FILES['gambar']['name'], PATHINFO_EXTENSION);
+        $new_filename = time() . '_' . uniqid() . '.' . $file_extension;
+        $target_file = $target_dir . $new_filename;
+        
+        // Validasi file gambar
+        $check = getimagesize($_FILES['gambar']['tmp_name']);
+        if ($check !== false) {
+            // Batasi ukuran file (maks 5MB)
+            if ($_FILES['gambar']['size'] <= 5 * 1024 * 1024) {
+                // Batasi tipe file
+                $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                if (in_array(strtolower($file_extension), $allowed_types)) {
+                    if (move_uploaded_file($_FILES['gambar']['tmp_name'], $target_file)) {
+                        $gambar = $new_filename;
+                    } else {
+                        $error = "Gagal upload gambar!";
+                    }
+                    } else {
+                        $error = "Tipe file tidak diizinkan! (JPG, PNG, GIF, WEBP)";
+                    }
+                    } else {
+                        $error = "Ukuran file terlalu besar! Maksimal 5MB";
+                    }
+                    } else {
+                        $error = "File bukan gambar yang valid!";
+                    }
+    }
+    
+    // Jika tidak ada error, simpan ke database
+    if (!isset($error)) {
+        $sql = "INSERT INTO produk (nama, harga, kategori, deskripsi, gambar) 
+                VALUES ('$nama', $harga, '$kategori', '$deskripsi', '$gambar')";
+        
+        if ($conn->query($sql)) {
+            $success = "Produk berhasil ditambahkan!";
+        } else {
+            $error = "Gagal menambahkan produk: " . $conn->error;
+        }
     }
 }
+
 
 // UPDATE - Edit produk (Admin only)
 if (isset($_POST['update']) && $isAdmin) {
@@ -40,31 +93,97 @@ if (isset($_POST['update']) && $isAdmin) {
     $kategori = mysqli_real_escape_string($conn, $_POST['kategori']);
     $deskripsi = mysqli_real_escape_string($conn, $_POST['deskripsi']);
     
-    $sql = "UPDATE produk SET 
-            nama='$nama', 
-            harga=$harga, 
-            kategori='$kategori', 
-            deskripsi='$deskripsi' 
-            WHERE id=$id";
+    $result_old = $conn->query("SELECT gambar FROM produk WHERE id=$id");
+    $old_data = $result_old->fetch_assoc();
+    $gambar = $old_data['gambar'] ?? 'default.png';
     
-    if ($conn->query($sql)) {
-        $success = "Produk berhasil diupdate!";
-    } else {
-        $error = "Gagal update produk: " . $conn->error;
+    // ===== PROSES UPLOAD GAMBAR BARU =====
+    if (isset($_FILES['edit_gambar']) && $_FILES['edit_gambar']['error'] === 0) {
+        $target_dir = "images/";
+        
+        // Buat folder images jika belum ada
+        if (!is_dir($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        
+        // Generate nama file unik
+        $file_extension = pathinfo($_FILES['edit_gambar']['name'], PATHINFO_EXTENSION);
+        $new_filename = time() . '_' . uniqid() . '.' . $file_extension;
+        $target_file = $target_dir . $new_filename;
+        
+        // Validasi file gambar
+        $check = getimagesize($_FILES['edit_gambar']['tmp_name']);
+        if ($check !== false) {
+            if ($_FILES['edit_gambar']['size'] <= 5 * 1024 * 1024) {
+                $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                if (in_array(strtolower($file_extension), $allowed_types)) {
+                    if (move_uploaded_file($_FILES['edit_gambar']['tmp_name'], $target_file)) {
+                        // Hapus gambar lama jika bukan default
+                        if ($gambar !== 'default.png' && file_exists($target_dir . $gambar)) {
+                            unlink($target_dir . $gambar);
+                        }
+                        $gambar = $new_filename;
+                        } else {
+                            $error = "Gagal upload gambar!";
+                        }
+                        } else {
+                            $error = "Tipe file tidak diizinkan! (JPG, PNG, GIF, WEBP)";
+                        }
+                        } else {
+                            $error = "Ukuran file terlalu besar! Maksimal 5MB";
+                        }
+                        } else {
+                            $error = "File bukan gambar yang valid!";
+                        }
+                    }
+        
+    // Jika tidak ada error, update database
+    if (!isset($error)) {
+        $sql = "UPDATE produk SET 
+                nama='$nama', 
+                harga=$harga, 
+                kategori='$kategori', 
+                deskripsi='$deskripsi',
+                gambar='$gambar'
+                WHERE id=$id";
+        
+        if ($conn->query($sql)) {
+            $success = "Produk berhasil diupdate!";
+        } else {
+            $error = "Gagal update produk: " . $conn->error;
+        }
     }
 }
+
 
 // DELETE - Hapus produk (Admin only)
 if (isset($_GET['hapus']) && $isAdmin) {
     $id = (int)$_GET['hapus'];
+
+    $result_img = $conn->query("SELECT gambar FROM produk WHERE id=$id");
+    $data_img = $result_img->fetch_assoc();
+
     $sql = "DELETE FROM produk WHERE id=$id";
-    
+
     if ($conn->query($sql)) {
+        $gambar = trim((string)($data_img['gambar'] ?? ''));
+        $target_dir = "images/";
+
+        if (
+            $gambar !== '' &&
+            $gambar !== 'default.png' &&
+            basename($gambar) === $gambar &&
+            is_file($target_dir . $gambar)
+        ) {
+            unlink($target_dir . $gambar);
+        }
+
         $success = "Produk berhasil dihapus!";
     } else {
         $error = "Gagal hapus produk: " . $conn->error;
     }
 }
+
 
 // READ - Ambil semua produk
 $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
@@ -144,22 +263,34 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
                 <i class="fas fa-plus-circle me-2"></i>Tambah Produk Baru
             </div>
             <div class="card-body">
-                <form method="POST" class="row g-2">
+                <form method="POST" class="row g-2" enctype="multipart/form-data">
                     <div class="col-md-3">
                         <input type="text" name="nama" class="form-control" placeholder="Nama Produk" required>
                     </div>
                     <div class="col-md-2">
                         <input type="number" name="harga" class="form-control" placeholder="Harga" required>
                     </div>
-                    <div class="col-md-2">
-                        <input type="text" name="kategori" class="form-control" placeholder="Kategori">
+                    <div class="col-md-3">
+                        <select name="kategori" class="form-select" required>
+                            <option value="">Pilih Kategori</option>
+                            <?php foreach ($kategori_list as $key => $label): ?>
+                                <option value="<?= $key ?>"><?= $label ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="col-md-3">
                         <input type="text" name="deskripsi" class="form-control" placeholder="Deskripsi singkat">
                     </div>
-                    <div class="col-12 mt-2">
+                    <!-- ===== INPUT GAMBAR ===== -->
+                    <div class="col-md-6">
+                        <input type="file" name="gambar" class="form-control" accept="image/*">
+                        <small class="text-muted">Format: JPG, PNG, GIF, WEBP | Maks: 5MB</small>
+                        <!-- Preview gambar -->
+                        <div id="preview-tambah" class="mt-2"></div>
+                    </div>
+                    <div class="col-md-6">
                         <button type="submit" name="tambah" class="btn btn-success w-100">
-                            <i class="fas fa-save me-1"></i>Tambah
+                            <i class="fas fa-save me-1"></i>Tambah Produk
                         </button>
                     </div>
                 </form>
@@ -177,52 +308,59 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
         <?php endif; ?>
 
         <!-- ===== DAFTAR PRODUK (READ) ===== -->
-        <div class="row">
-            <?php if ($result->num_rows > 0): ?>
-                <?php while($row = $result->fetch_assoc()): ?>
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100 shadow-sm">
-                        <img src="images/<?= $row['gambar'] ?? 'default.png' ?>" 
-                             class="card-img-top" alt="<?= $row['nama'] ?>"
-                             style="height: 220px; object-fit: cover;">
-                        <div class="card-body">
-                            <h5 class="card-title"><?= htmlspecialchars($row['nama']) ?></h5>
-                            <p class="text-danger fw-bold">Rp <?= number_format($row['harga'], 0, ',', '.') ?></p>
-                            <span class="badge bg-secondary"><?= htmlspecialchars($row['kategori']) ?></span>
-                            <p class="mt-2 small text-muted"><?= htmlspecialchars($row['deskripsi']) ?></p>
-                            
-                            <div class="mt-3">
-                                <!-- Tombol Detail (Semua user bisa lihat) -->
-                                <button class="btn btn-info btn-sm" onclick="detailProduk('<?= htmlspecialchars($row['nama']) ?>', '<?= number_format($row['harga'], 0, ',', '.') ?>', '<?= htmlspecialchars($row['kategori']) ?>', '<?= htmlspecialchars($row['deskripsi']) ?>')">
-                                    <i class="fas fa-eye me-1"></i>Detail
-                                </button>
-                                
-                                <!-- Tombol Edit & Hapus - HANYA ADMIN -->
-                                <?php if ($isAdmin): ?>
-                                <button class="btn btn-warning btn-sm" onclick="editProduk(<?= $row['id'] ?>, '<?= addslashes($row['nama']) ?>', <?= $row['harga'] ?>, '<?= addslashes($row['kategori']) ?>', '<?= addslashes($row['deskripsi']) ?>')">
-                                    <i class="fas fa-edit me-1"></i>Edit
-                                </button>
-                                <a href="?hapus=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus produk ini?')">
-                                    <i class="fas fa-trash me-1"></i>Hapus
-                                </a>
-                                <?php else: ?>
-                                <span class="badge bg-secondary">
-                                    <i class="fas fa-lock me-1"></i>Login admin untuk edit
-                                </span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
+<div class="row">
+    <?php if ($result->num_rows > 0): ?>
+        <?php while($row = $result->fetch_assoc()): ?>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <!-- ===== TAMPILAN GAMBAR ===== -->
+                <?php 
+                $gambar_path = 'images/' . ($row['gambar'] ?? 'default.png');
+                if (!file_exists($gambar_path)) {
+                    $gambar_path = 'images/default.png';
+                }
+                ?>
+                <img src="<?= $gambar_path ?>" 
+                     class="card-img-top" alt="<?= htmlspecialchars($row['nama']) ?>"
+                     style="height: 220px; object-fit: cover;">
+                <div class="card-body">
+                    <h5 class="card-title"><?= htmlspecialchars($row['nama']) ?></h5>
+                    <p class="text-danger fw-bold">Rp <?= number_format($row['harga'], 0, ',', '.') ?></p>
+                    <span class="badge bg-secondary"><?= htmlspecialchars($row['kategori']) ?></span>
+                    <p class="mt-2 small text-muted"><?= htmlspecialchars($row['deskripsi']) ?></p>
+                    
+                    <div class="mt-3">
+                        <!-- Tombol Detail (Semua user bisa lihat) -->
+                        <button class="btn btn-info btn-sm" onclick="detailProduk('<?= htmlspecialchars($row['nama']) ?>', '<?= number_format($row['harga'], 0, ',', '.') ?>', '<?= htmlspecialchars($row['kategori']) ?>', '<?= htmlspecialchars($row['deskripsi']) ?>')">
+                            <i class="fas fa-eye me-1"></i>Detail
+                        </button>
+                        
+                        <!-- Tombol Edit & Hapus - HANYA ADMIN -->
+                        <?php if ($isAdmin): ?>
+                        <button class="btn btn-warning btn-sm" onclick="editProduk(<?= $row['id'] ?>, '<?= addslashes($row['nama']) ?>', <?= $row['harga'] ?>, '<?= addslashes($row['kategori']) ?>', '<?= addslashes($row['deskripsi']) ?>')">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </button>
+                        <a href="?hapus=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin hapus produk ini?')">
+                            <i class="fas fa-trash me-1"></i>Hapus
+                        </a>
+                        <?php else: ?>
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-lock me-1"></i>Login admin untuk edit
+                        </span>
+                        <?php endif; ?>
                     </div>
                 </div>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <div class="col-12">
-                    <div class="alert alert-info text-center">
-                        <i class="fas fa-info-circle me-2"></i>Belum ada produk. Tambahkan produk pertama!
-                    </div>
-                </div>
-            <?php endif; ?>
+            </div>
         </div>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle me-2"></i>Belum ada produk. Tambahkan produk pertama!
+            </div>
+        </div>
+    <?php endif; ?>
+</div>
         
         <!-- ===== INFO JUMLAH PRODUK ===== -->
         <div class="text-center text-muted mt-3">
@@ -245,7 +383,7 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
                     <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Produk</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <div class="modal-body">
                         <input type="hidden" name="id" id="edit-id">
                         
@@ -266,12 +404,19 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
                             <input type="text" name="deskripsi" id="edit-deskripsi" class="form-control">
                         </div>
                     </div>
+                        <div class="mb-2">
+                        <label class="form-label">Gambar Produk</label>
+                        <input type="file" name="edit_gambar" class="form-control" accept="image/*">
+                        <small class="text-muted">Kosongkan jika tidak ingin mengubah gambar</small>
+                        <div id="preview-gambar" class="mt-2"></div>
+                    </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                         <button type="submit" name="update" class="btn btn-primary">
                             <i class="fas fa-save me-1"></i>Update
                         </button>
                     </div>
+                    
                 </form>
             </div>
         </div>
