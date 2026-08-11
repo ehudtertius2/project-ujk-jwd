@@ -202,44 +202,66 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
 </head>
 <body>
     <!-- ===== NAVBAR ===== -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-info shadow-sm">
         <div class="container">
             <a class="navbar-brand fw-bold" href="index.html">
-                <i class="fas fa-user-circle me-2"></i>MyPortfolio
+                <i class="fas fa-store"></i> Toko Rajut
             </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="index.html">
-                    <i class="fas fa-home me-1"></i>Profil
-                </a>
-                <a class="nav-link active" href="toko.php">
-                    <i class="fas fa-store me-1"></i>Toko Rajut
-                </a>
-                <a class="nav-link text-warning" href="logout.php">
-                    <i class="fas fa-sign-out-alt me-1"></i>Logout
-                </a>
-            </div>
+
+            <!-- Tombol hamburger untuk mobile -->
+            <button class="navbar-toggler" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#navbarMain"
+                    aria-controls="navbarMain" aria-expanded="false"
+                    aria-label="Buka navigasi">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarMain">
+            <ul class="navbar-nav ms-auto align-items-lg-center">
+                <li class="nav-item">
+                    <span class="navbar-text text-white fw-semibold">
+                        <i class="fas fa-user-circle me-1"></i>
+                        <?= htmlspecialchars($_SESSION['name'] ?? 'User')    ?>
+                    </span>
+                </li>
+                
+                <li class="nav-item">
+                    <a class="nav-link text-danger fw-semibold" href="logout.php">
+                        <i class="fas fa-sign-out-alt me-1"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </div>
         </div>
     </nav>
 
     <div class="container mt-4">
         <!-- ===== HEADER ===== -->
-        <div class="text-center mb-4">
-            <h2><i class="fas fa-tshirt text-primary me-2"></i>Produk Rajut Kami</h2>
-            <p class="text-muted">Karya tangan berkualitas dari pengrajin lokal</p>
-            
-            <!-- Info User -->
-            <div class="d-inline-block bg-light px-3 py-2 rounded">
-                <?php if ($isAdmin): ?>
-                    <span class="badge bg-warning text-dark ms-1">
-                        <i class="fas fa-cogs me-1"></i>Full Akses
-                    </span>
-                <?php else: ?>
-                    <span class="badge bg-secondary ms-1">
-                        <i class="fas fa-eye me-1"></i>Hanya Lihat
-                    </span>
-                <?php endif; ?>
-            </div>
-        </div>
+<div class="text-center mb-4">
+    <h2><i class="fas fa-tshirt text-primary me-2"></i>Produk Rajut Kami</h2>
+    <br>
+    <div class="mt-2 mb-3">
+        <span class="badge bg-primary text-white px-3 py-2" style="font-size: 0.85rem;">
+            <i class="fab fa-php me-1"></i> PHP Native CRUD Portofolio
+        </span>
+        <h5 class="d-block text-muted mt-1" style="font-size: 0.75rem;">
+            Dibuat tanpa framework sebagai demonstrasi kemampuan dasar
+        </h5>
+    </div>
+
+    <!-- Info User (kode asli tetap dipertahankan) -->
+    <div class="d-inline-block bg-light px-3 py-2 rounded">
+        <?php if ($isAdmin): ?>
+            <span class="badge bg-warning text-dark ms-1">
+                <i class="fas fa-cogs me-1"></i>Full Akses
+            </span>
+        <?php else: ?>
+            <span class="badge bg-secondary ms-1">
+                <i class="fas fa-eye me-1"></i>Hanya Lihat
+            </span>
+        <?php endif; ?>
+    </div>
+</div>
 
         <!-- ===== NOTIFIKASI ===== -->
         <?php if (isset($success)): ?>
@@ -259,7 +281,7 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
         <!-- ===== FORM TAMBAH PRODUK (CREATE) - HANYA ADMIN ===== -->
         <?php if ($isAdmin): ?>
         <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-secondary text-white">
                 <i class="fas fa-plus-circle me-2"></i>Tambah Produk Baru
             </div>
             <div class="card-body">
@@ -289,7 +311,7 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
                         <div id="preview-tambah" class="mt-2"></div>
                     </div>
                     <div class="col-md-6">
-                        <button type="submit" name="tambah" class="btn btn-success w-100">
+                        <button type="submit" name="tambah" class="btn btn-info w-100 text-white">
                             <i class="fas fa-save me-1"></i>Tambah Produk
                         </button>
                     </div>
@@ -331,7 +353,12 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
                     
                     <div class="mt-3">
                         <!-- Tombol Detail (Semua user bisa lihat) -->
-                        <button class="btn btn-info btn-sm" onclick="detailProduk('<?= htmlspecialchars($row['nama']) ?>', '<?= number_format($row['harga'], 0, ',', '.') ?>', '<?= htmlspecialchars($row['kategori']) ?>', '<?= htmlspecialchars($row['deskripsi']) ?>')">
+                        <button class="btn btn-info btn-sm btn-detail"
+                            data-nama="<?= htmlspecialchars($row['nama'], ENT_QUOTES) ?>"
+                            data-harga="<?= number_format($row['harga'], 0, ',', '.') ?>"
+                            data-kategori="<?= htmlspecialchars($row['kategori'], ENT_QUOTES) ?>"
+                            data-deskripsi="<?= htmlspecialchars($row['deskripsi'], ENT_QUOTES) ?>"
+                            data-gambar="<?= htmlspecialchars($gambar_path, ENT_QUOTES) ?>">
                             <i class="fas fa-eye me-1"></i>Detail
                         </button>
                         
@@ -424,35 +451,47 @@ $result = $conn->query("SELECT * FROM produk ORDER BY id DESC");
     <?php endif; ?>
 
     <!-- ===== MODAL DETAIL (Semua user bisa lihat) ===== -->
-    <div class="modal fade" id="detailModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Detail Produk</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailModalLabel"><i class="fas fa-info-circle me-2"></i>Detail Produk</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 align-items-start">
+                    <!-- KIRI: info produk -->
+                    <div class="col-md-6">
+                        <p><strong>Nama:</strong> <span id="detail-nama"></span></p>
+                        <p><strong>Harga:</strong> <span id="detail-harga" class="text-danger fw-bold"></span></p>
+                        <p><strong>Kategori:</strong> <span id="detail-kategori" class="badge bg-secondary"></span></p>
+                        <p class="mb-1"><strong>Deskripsi:</strong></p>
+                        <p id="detail-deskripsi" class="text-muted"></p>
+                    </div>
+                    <!-- KANAN: gambar produk -->
+                    <div class="col-md-6 text-center">
+                        <img id="detail-gambar" src="images/default.png" alt="Gambar produk"
+                             class="img-fluid rounded shadow-sm"
+                             style="max-height: 260px; width: 100%; object-fit: cover;">
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <p><strong>Nama:</strong> <span id="detail-nama"></span></p>
-                    <p><strong>Harga:</strong> <span id="detail-harga"></span></p>
-                    <p><strong>Kategori:</strong> <span id="detail-kategori"></span></p>
-                    <p><strong>Deskripsi:</strong> <span id="detail-deskripsi"></span></p>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
+</div>
 
     <!-- ===== FOOTER ===== -->
     <footer class="bg-dark text-white text-center py-3 mt-5">
         <div class="container">
-            <p class="mb-0">&copy; 2024 - Ehud Tertius Simanjuntak | Toko Rajut</p>
+            <p class="mb-0">&copy; <?= date('Y') ?> - Ehud Tertius Simanjuntak | Toko Rajut</p>
         </div>
     </footer>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=<?= time(); ?>"></script>
 </body>
 </html>
